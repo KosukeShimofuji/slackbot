@@ -1,64 +1,80 @@
 package main
 
 import (
-    "fmt"
-    "log"
-    "os"
+	"fmt"
+	"log"
+	"os"
 
-    "github.com/nlopes/slack"
+        //"github.com/fatih/color"
+	"github.com/nlopes/slack"
+	//debug
+	//"reflect"
+	"github.com/kr/pretty"
+)
 
-    //debug
-    //"reflect"
-    //"github.com/kr/pretty"
+var (
+	BOTNAME = "sss-bot"
+	BOTCHAN = "sss-bot-chan"
+	TOKEN   = os.Getenv("SSS_SLACKBOT_TOKEN")
 )
 
 func main() {
-    api := slack.New("XXX")
-    logger := log.New(os.Stdout, "sss-slackbot: ", log.Lshortfile|log.LstdFlags)
-    slack.SetLogger(logger)
-    //api.SetDebug(true)
+	// variable settings
+	if TOKEN == "" {
+		fmt.Printf("please set SSS_SLACKBOT_TOKEN environment variable\n")
+		os.Exit(0)
+	}
 
-    channels, err := api.GetChannels(false)
-    if err != nil {
-	fmt.Printf("%s\n", err)
-	return
-    }
+	// slackbot basic settings
+	api := slack.New(TOKEN)
+	logger := log.New(os.Stdout, BOTNAME+": ", log.Lshortfile|log.LstdFlags)
+	slack.SetLogger(logger)
 
-    for _, channel := range channels {
-        fmt.Println(channel.ID, channel.Name)
+	// send startup message
+	msg := fmt.Sprintf("START UP %s [%d]\n", BOTNAME, os.Getpid())
+	channelID, timestamp, err := api.PostMessage(BOTCHAN, msg, slack.PostMessageParameters{})
 
-//    slack.Channel{
-//        groupConversation: slack.groupConversation{
-//            conversation: slack.conversation{
-//                ID:                 "C2G9S2KPY",
-//                Created:            1474945736,
-//                IsOpen:             false,
-//                LastRead:           "",
-//                Latest:             (*slack.Message)(nil),
-//                UnreadCount:        0,
-//                UnreadCountDisplay: 0,
-//            },
-//            Name:       "sss-slackbot-channel",
-//            Creator:    "U03RAJ6BK",
-//            IsArchived: false,
-//            Members:    {"U03RAJ6BK"},
-//            NumMembers: 1,
-//            Topic:      slack.Topic{},
-//            Purpose:    slack.Purpose{},
-//        },
-//        IsChannel: true,
-//        IsGeneral: false,
-//        IsMember:  false,
-//    }
+	if err != nil {
+		fmt.Printf("%s\n", err)
+	}
 
-        //fmt.Printf("%# v\n", pretty.Formatter(channel))
-        //fmt.Println(reflect.TypeOf(channel))
-	//fmt.Println(channel)
-    }
+	fmt.Printf("Message successfully sent to channel %s at %s", channelID, timestamp)
 
-    //rtm := api.NewRTM()
-    //go rtm.ManageConnection()
-    //rtm.SendMessage(rtm.NewOutgoingMessage("Hello world", "sss-slackbot-channel"))
+        // initialize NewRTM
+	rtm := api.NewRTM()
+	go rtm.ManageConnection()
+
+Loop:
+	for {
+		select {
+		case msg := <-rtm.IncomingEvents:
+			fmt.Print("Event Received: ")
+                        fmt.Printf("%# v\n",pretty.Formatter(msg))
+			switch ev := msg.Data.(type) {
+			case *slack.HelloEvent:
+                            // Ignore hello
+			case *slack.ConnectedEvent:
+				fmt.Println("Infos:", ev.Info)
+				fmt.Println("Connection counter:", ev.ConnectionCount)
+				rtm.SendMessage(rtm.NewOutgoingMessage("Hello world", BOTCHAN))
+			case *slack.Message:
+				fmt.Printf("Message: %v\n", ev)
+			case *slack.PresenceChangeEvent:
+				fmt.Printf("Presence Change: %v\n", ev)
+			case *slack.LatencyReport:
+				fmt.Printf("Current latency: %v\n", ev.Value)
+			case *slack.RTMError:
+				fmt.Printf("Error: %s\n", ev.Error())
+			case *slack.InvalidAuthEvent:
+				fmt.Printf("Invalid credentials")
+				break Loop
+			default:
+				// Ignore other events..
+				// fmt.Printf("Unexpected: %v\n", msg.Data)
+			}
+		}
+	}
 }
+
 
 
