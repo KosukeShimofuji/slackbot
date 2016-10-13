@@ -2,67 +2,46 @@ package main
 
 import (
 	"fmt"
+	_ "github.com/fatih/color"
+	_ "github.com/kr/pretty"
+	"github.com/nlopes/slack"
 	"log"
 	"os"
-
-        //"github.com/fatih/color"
-	"github.com/nlopes/slack"
-	//debug
-	//"reflect"
-	"github.com/kr/pretty"
+	_ "reflect"
 )
 
+// package variables
 var (
-	BOTNAME = "sss-bot"
-	BOTCHAN = "sss-bot-chan"
+	BOTNAME = "3sb0t"
+	BOTCHAN = "3sb0tr00m"
 	TOKEN   = os.Getenv("SSS_SLACKBOT_TOKEN")
 )
 
-func main() {
-	// variable settings
-	if TOKEN == "" {
-		fmt.Printf("please set SSS_SLACKBOT_TOKEN environment variable\n")
-		os.Exit(0)
-	}
-
-	// slackbot basic settings
-	api := slack.New(TOKEN)
-	logger := log.New(os.Stdout, BOTNAME+": ", log.Lshortfile|log.LstdFlags)
-	slack.SetLogger(logger)
-
+func speak(api *slack.Client, message string) {
 	// send startup message
-	msg := fmt.Sprintf("START UP %s [%d]\n", BOTNAME, os.Getpid())
-	channelID, timestamp, err := api.PostMessage(BOTCHAN, msg, slack.PostMessageParameters{})
+	msg := fmt.Sprintf("%s[%d]: %s\n", BOTNAME, os.Getpid(), message)
+	channelID, timestamp, err := api.PostMessage(BOTCHAN, msg, slack.PostMessageParameters{Username: BOTNAME})
 
 	if err != nil {
 		fmt.Printf("%s\n", err)
 	}
 
-	fmt.Printf("Message successfully sent to channel %s at %s", channelID, timestamp)
+	fmt.Printf("Message successfully sent to channel %s at %s\n", channelID, timestamp)
+}
 
-        // initialize NewRTM
+func rtmloop(api *slack.Client) {
+	// initialize NewRTM
 	rtm := api.NewRTM()
 	go rtm.ManageConnection()
-
 Loop:
 	for {
 		select {
 		case msg := <-rtm.IncomingEvents:
-			fmt.Print("Event Received: ")
-                        fmt.Printf("%# v\n",pretty.Formatter(msg))
+			// fmt.Print("Event Received: ")
+			// fmt.Printf("%# v\n",pretty.Formatter(msg))
 			switch ev := msg.Data.(type) {
-			case *slack.HelloEvent:
-                            // Ignore hello
-			case *slack.ConnectedEvent:
-				fmt.Println("Infos:", ev.Info)
-				fmt.Println("Connection counter:", ev.ConnectionCount)
-				rtm.SendMessage(rtm.NewOutgoingMessage("Hello world", BOTCHAN))
-			case *slack.Message:
-				fmt.Printf("Message: %v\n", ev)
-			case *slack.PresenceChangeEvent:
-				fmt.Printf("Presence Change: %v\n", ev)
-			case *slack.LatencyReport:
-				fmt.Printf("Current latency: %v\n", ev.Value)
+			case *slack.MessageEvent:
+				fmt.Printf("Message: %s\n", ev.Text)
 			case *slack.RTMError:
 				fmt.Printf("Error: %s\n", ev.Error())
 			case *slack.InvalidAuthEvent:
@@ -76,5 +55,22 @@ Loop:
 	}
 }
 
+func main() {
+	// variable settings
+	if TOKEN == "" {
+		fmt.Printf("please set SSS_SLACKBOT_TOKEN environment variable\n")
+		os.Exit(0)
+	}
 
+	// slackbot basic settings
+	api := slack.New(TOKEN)
+	logger := log.New(os.Stdout, BOTNAME+": ", log.Lshortfile|log.LstdFlags)
+	slack.SetLogger(logger)
+
+	speak(api, fmt.Sprintf("start up %s", BOTNAME))
+
+	rtmloop(api)
+
+	speak(api, fmt.Sprintf("end %s", BOTNAME))
+}
 
