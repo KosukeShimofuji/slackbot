@@ -81,7 +81,6 @@ func main() {
 
 	// running
 	info(api, BOTCHAN, fmt.Sprintf("%sが起動しました。:grinning: ", BOTNAME))
-
 	rtmloop(api)
-	info(api, BOTCHAN, fmt.Sprintf("*FINISH %s*", BOTNAME))
+	info(api, BOTCHAN, fmt.Sprintf("%sが終了しました。:hugging_face:", BOTNAME))
 }
