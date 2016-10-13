@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	_ "github.com/fatih/color"
+	"github.com/fatih/color"
 	_ "github.com/kr/pretty"
 	"github.com/nlopes/slack"
 	"log"
@@ -12,28 +12,40 @@ import (
 
 // package variables
 var (
-	BOTNAME = "3sb0t"
-	BOTCHAN = "3sb0tr00m"
-	TOKEN   = os.Getenv("SSS_SLACKBOT_TOKEN")
+	BOTNAME = "SSSBOT"
+	BOTCHAN = "SSSB0T"
+	TOKEN   = os.Getenv("SLACKBOT_TOKEN")
 )
 
-func speak(api *slack.Client, message string) {
-	// send startup message
-	msg := fmt.Sprintf("%s[%d]: %s\n", BOTNAME, os.Getpid(), message)
-	channelID, timestamp, err := api.PostMessage(BOTCHAN, msg, slack.PostMessageParameters{Username: BOTNAME})
+func info(api *slack.Client, channel, message string) {
+	formated_message :=
+		fmt.Sprintf("*[%s][%d][INFO]*: %s\n", BOTNAME, os.Getpid(), message)
+
+	_, timestamp, err := api.PostMessage(channel,
+		formated_message,
+		slack.PostMessageParameters{Username: BOTNAME},
+	)
 
 	if err != nil {
 		fmt.Printf("%s\n", err)
 	}
 
-	fmt.Printf("Message successfully sent to channel %s at %s\n", channelID, timestamp)
+	c := color.New(color.FgBlue)
+	c.Printf("[%s][%d][%s][%s][INFO]: %s\n",
+		BOTNAME, os.Getpid(), channel, timestamp, message,
+	)
+}
+
+func debug(message string) {
+	c := color.New(color.FgMagenta)
+	c.Printf("[%s][%d][DEBUG]: %s\n", BOTNAME, os.Getpid(), message)
 }
 
 func rtmloop(api *slack.Client) {
 	// initialize NewRTM
 	rtm := api.NewRTM()
 	go rtm.ManageConnection()
-Loop:
+RTMLOOP:
 	for {
 		select {
 		case msg := <-rtm.IncomingEvents:
@@ -41,12 +53,12 @@ Loop:
 			// fmt.Printf("%# v\n",pretty.Formatter(msg))
 			switch ev := msg.Data.(type) {
 			case *slack.MessageEvent:
-				fmt.Printf("Message: %s\n", ev.Text)
+				debug(fmt.Sprintf("Message: %s", ev.Text))
 			case *slack.RTMError:
-				fmt.Printf("Error: %s\n", ev.Error())
+				debug(fmt.Sprintf("Error: %s", ev.Error()))
 			case *slack.InvalidAuthEvent:
-				fmt.Printf("Invalid credentials")
-				break Loop
+				debug(fmt.Sprintf("Invalid credentials"))
+				break RTMLOOP
 			default:
 				// Ignore other events..
 				// fmt.Printf("Unexpected: %v\n", msg.Data)
@@ -67,10 +79,9 @@ func main() {
 	logger := log.New(os.Stdout, BOTNAME+": ", log.Lshortfile|log.LstdFlags)
 	slack.SetLogger(logger)
 
-	speak(api, fmt.Sprintf("start up %s", BOTNAME))
+	// running
+	info(api, BOTCHAN, fmt.Sprintf("%sが起動しました。:grinning: ", BOTNAME))
 
 	rtmloop(api)
-
-	speak(api, fmt.Sprintf("end %s", BOTNAME))
+	info(api, BOTCHAN, fmt.Sprintf("*FINISH %s*", BOTNAME))
 }
-
