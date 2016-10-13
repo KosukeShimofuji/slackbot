@@ -2,10 +2,8 @@
 
 サイバーセキュリティに関わるタスクを手伝ってくれるslackbotを開発する。
 
-## Event Plugin
+## Plugins based on CRON
 
-
-
-## WebRTC Plugin 
+## Plugins based on WebRTC
 
 
